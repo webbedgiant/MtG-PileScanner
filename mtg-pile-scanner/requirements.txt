@@ -1,0 +1,12 @@
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+requests>=2.31
+ijson>=3.2
+rapidfuzz>=3.6
+openpyxl>=3.1
+numpy>=1.26
+opencv-python>=4.8
+onnxruntime>=1.18
+rapidocr>=3.0
+truststore>=0.9
