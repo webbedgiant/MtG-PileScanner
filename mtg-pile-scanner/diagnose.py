@@ -8,25 +8,21 @@ def step(name, fn):
     except Exception:
         log(f"[FAIL] {name}:\n{traceback.format_exc()}")
 log("Python", sys.version, platform.platform())
-try:
-    import truststore; truststore.inject_into_ssl(); log("truststore active")
-except Exception as e:
-    log("truststore not active:", e)
 import requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from app import db
+from app import db, net
 DATA = db.DATA_DIR
 H = {"User-Agent": "MTGPileScanner/1.0", "Accept": "application/json;q=0.9,*/*;q=0.8"}
 info = {}
 def bulk():
-    r = requests.get("https://api.scryfall.com/bulk-data", headers=H, timeout=30)
+    r = net.get("https://api.scryfall.com/bulk-data", headers=H, timeout=30)
     r.raise_for_status()
     from app import scryfall
     e = scryfall._find_entry(r.json()["data"])
     info["uri"] = scryfall._download_uri(e); return f"{r.status_code}, entry fields {sorted(e)}"
 step("api.scryfall.com bulk-data", bulk)
 def head():
-    r = requests.get(info["uri"], headers=H, stream=True, timeout=30)
+    r = net.get(info["uri"], headers=H, stream=True, timeout=30)
     n = next(r.iter_content(1024)); r.close(); return f"{r.status_code}, got {len(n)} bytes from {info['uri']}"
 if "uri" in info: step("data.scryfall.io download", head)
 def imports():

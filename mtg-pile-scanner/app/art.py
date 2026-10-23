@@ -1,14 +1,15 @@
 """Card-art recognition: a compact visual fingerprint of every card's artwork."""
-import sqlite3, time
+import sqlite3, threading, time
 import cv2, numpy as np, requests
 from concurrent.futures import ThreadPoolExecutor
-from . import db
+from . import db, net
 
 ART_BOX = (0.08, 0.92, 0.125, 0.54)   # x0, x1, y0, y1 of the art window as fractions of the card face
 ART_MIN_SIM = 0.72                    # minimum similarity to accept an art-only match (tune if needed)
 ART_MIN_MARGIN = 0.03                 # required lead over the best *different* card
+ART_SUGGEST_MIN = 0.50                # real photos score ~0.6 for a true match: show as a clickable suggestion
 HEADERS = {"User-Agent": "MTGPileScanner/1.0", "Accept": "image/jpeg,*/*;q=0.8"}
-STATE = {"building": False, "cancel": False, "done": 0, "total": 0, "error": None}
+STATE = {"building": False, "cancel": False, "done": 0, "total": 0, "error": None, "rate": 0.0, "eta_s": None}
 DATA = (None, [], [])                 # (matrix, card_ids, names) swapped atomically
 
 
@@ -74,11 +75,49 @@ def match(desc):
     return ids[i1], float(sims[i1]), float(sims[i1]) - s2
 
 
+def match_top(desc, k=4):
+    """Top-k candidates with distinct card names: [(card_id, similarity)]."""
+    M, ids, names = DATA
+    if M is None or len(M) < 50:
+        return []
+    sims = M @ desc
+    kk = min(40, len(sims))
+    top = np.argpartition(-sims, kk - 1)[:kk]
+    out, seen = [], set()
+    for j in top[np.argsort(-sims[top])]:
+        if names[j] in seen:
+            continue
+        seen.add(names[j])
+        out.append((ids[j], float(sims[j])))
+        if len(out) == k:
+            break
+    return out
+
+
+_tls = threading.local()
+
+
+def _session():
+    """One keep-alive connection per worker thread: no new TCP/TLS handshake (or Windows certificate-store
+    check) for every image, which was the main cause of the slow download."""
+    s = getattr(_tls, "s", None)
+    if s is None:
+        s = net.new_session()
+        s.headers.update(HEADERS)
+        _tls.s = s
+    return s
+
+
 def _fetch(item):
     ill, cid, url, name = item
-    for attempt in range(3):
+    for attempt in range(4):
+        if STATE["cancel"]:
+            return None
         try:
-            r = requests.get(url, headers=HEADERS, timeout=20)
+            r = _session().get(url, timeout=20)
+            if r.status_code in (429, 503):  # asked to slow down: back off, then retry
+                time.sleep(2 * (attempt + 1))
+                continue
             r.raise_for_status()
             img = cv2.imdecode(np.frombuffer(r.content, np.uint8), cv2.IMREAD_COLOR)
             if img is None:
@@ -86,16 +125,40 @@ def _fetch(item):
             return ill, cid, name, art_descriptor(img).astype(np.float16).tobytes()
         except Exception as e:
             STATE["error"] = f"{type(e).__name__}: {e}"
+            _tls.s = None  # drop a possibly broken connection
             time.sleep(0.5 + attempt)
     return None
 
 
-def build_index(workers=32):
+def export_index(path):
+    with db.LOCK:
+        rows = db.get().execute("SELECT illustration_id, card_id, desc FROM art").fetchall()
+    np.savez_compressed(path, ill=np.array([r[0] for r in rows]), card=np.array([r[1] for r in rows]),
+                        desc=np.vstack([np.frombuffer(r[2], dtype=np.float16) for r in rows]))
+    return len(rows)
+
+
+def import_index(path):
+    z = np.load(path, allow_pickle=False)
+    ill, card, desc = z["ill"], z["card"], z["desc"].astype(np.float16)
+    if desc.ndim != 2 or desc.shape[1] != 528 or len(ill) != len(card) or len(ill) != len(desc):
+        raise ValueError("Not a valid art index file for this version")
+    with db.LOCK:
+        c = db.get()
+        c.execute("BEGIN")
+        c.executemany("INSERT OR IGNORE INTO art(illustration_id, card_id, desc) VALUES(?,?,?)",
+                      [(str(i), str(k), d.tobytes()) for i, k, d in zip(ill, card, desc)])
+        c.execute("COMMIT")
+    load_matrix()
+    return len(ill)
+
+
+def build_index(workers=64):
     """Download each distinct artwork once (small card images), keep only the fingerprint. Resumable."""
     if STATE["building"]:
         return
-    STATE.update(building=True, cancel=False, error=None)
-    ex = None
+    STATE.update(building=True, cancel=False, error=None, rate=0.0, eta_s=None)
+    ex, t_start, n_start = None, time.time(), 0
     try:
         with db.LOCK:
             have = {r[0] for r in db.get().execute("SELECT illustration_id FROM art")}
@@ -117,6 +180,7 @@ def build_index(workers=32):
         todo.sort(key=lambda t: t[0])
         todo = [t[1] for t in todo]
         STATE.update(done=total - len(todo), total=total)
+        n_start = STATE["done"]
         if size() == 0:
             load_matrix()
         if not todo:
@@ -135,6 +199,9 @@ def build_index(workers=32):
                 conn.execute("COMMIT")
                 _append([(b[1], b[2], b[3]) for b in batch])
                 STATE["done"] += len(batch)
+                el = max(time.time() - t_start, 1e-3)
+                STATE["rate"] = round((STATE["done"] - n_start) / el, 1)
+                STATE["eta_s"] = int((STATE["total"] - STATE["done"]) / STATE["rate"]) if STATE["rate"] > 0 else None
                 batch = []
 
         try:

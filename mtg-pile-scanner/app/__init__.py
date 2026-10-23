@@ -1,6 +1,1 @@
-# Use the Windows certificate store (fixes HTTPS failures behind antivirus/proxy HTTPS inspection).
-try:
-    import truststore
-    truststore.inject_into_ssl()
-except Exception:
-    pass
+# (outbound HTTPS trust is configured in app/net.py; the local server uses standard TLS)

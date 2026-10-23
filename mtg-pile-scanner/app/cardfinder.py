@@ -5,7 +5,7 @@ CW, CH = 252, 352   # rectified card
 AW, AH = 168, 116   # rectified art window
 
 
-def find_rects(img, max_side=1600):
+def find_rects(img, max_side=1600, min_area=0.0004, max_area=0.3, aspect=(0.60, 0.82)):
     """Rectangles with a card-like aspect ratio (0.60-0.82). A card (0.716) and its art window (~0.70) both qualify."""
     H, W = img.shape[:2]
     s = min(1.0, max_side / max(H, W))
@@ -19,13 +19,13 @@ def find_rects(img, max_side=1600):
         cnts, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         for c in cnts:
             area = cv2.contourArea(c)
-            if area < 0.0004 * h * w or area > 0.3 * h * w:
+            if area < min_area * h * w or area > max_area * h * w:
                 continue
             rect = cv2.minAreaRect(c)
             (cx, cy), (rw, rh), _ = rect
             if min(rw, rh) < 30 or max(rw, rh) == 0:
                 continue
-            if not 0.60 <= min(rw, rh) / max(rw, rh) <= 0.82:
+            if not aspect[0] <= min(rw, rh) / max(rw, rh) <= aspect[1]:
                 continue
             if cv2.contourArea(cv2.convexHull(c)) / (rw * rh) < 0.80:
                 continue
@@ -38,6 +38,18 @@ def find_rects(img, max_side=1600):
             continue
         kept.append((area, ctr, side, pts))
     return [k[3].astype(np.float32) for k in kept]
+
+
+def find_whole_cards(img, max_side=1000):
+    """Fast detector for cards lying separately: only full-size card outlines (no art windows), largest first."""
+    rects = find_rects(img, max_side=max_side, min_area=0.012, max_area=0.92, aspect=(0.64, 0.80))
+    kept = []
+    for p in rects:  # already sorted by area, biggest first
+        a, c = cv2.contourArea(p), (float(p[:, 0].mean()), float(p[:, 1].mean()))
+        if any(a < 0.65 * ka and cv2.pointPolygonTest(kp.reshape(-1, 1, 2), c, False) >= 0 for kp, ka in kept):
+            continue  # a smaller box inside a bigger card = its art window or text box, not another card
+        kept.append((p, a))
+    return [p for p, _ in kept]
 
 
 def explained(pts, centers):
@@ -74,8 +86,8 @@ def _warp(img, pts, w, h, long_vertical):
     return cv2.warpPerspective(img, cv2.getPerspectiveTransform(p, dst), (w, h))
 
 
-def warp_card(img, pts):  # rectangle is a whole card (long side vertical)
-    return _warp(img, pts, CW, CH, True)
+def warp_card(img, pts, scale=1):  # rectangle is a whole card (long side vertical)
+    return _warp(img, pts, CW * scale, CH * scale, True)
 
 
 def warp_art(img, pts):   # rectangle is the art window (long side horizontal)

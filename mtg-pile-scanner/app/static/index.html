@@ -3,88 +3,113 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 :root{--bg:#0f1423;--panel:#171e33;--line:#2a3452;--txt:#e8ecf8;--mut:#8b96b8;--acc:#5b8cff;--ok:#2ecc71;--warn:#f39c12;--bad:#e74c3c}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:14px "Segoe UI",system-ui,sans-serif}
-header{display:flex;gap:16px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-h1{font-size:18px;margin:0}h2{font-size:15px;margin:0 0 8px}
-.tabs button{background:none;border:0;color:var(--mut);padding:8px 14px;font-size:14px;cursor:pointer;border-bottom:2px solid transparent}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden}
+body{display:flex;flex-direction:column;background:var(--bg);color:var(--txt);font:13px "Segoe UI",system-ui,sans-serif}
+header{flex:none;display:flex;gap:8px;align-items:center;padding:4px 10px;border-bottom:1px solid var(--line);min-width:0}
+h1{font-size:15px;margin:0;white-space:nowrap}h2{font-size:14px;margin:0}
+.tabs{display:flex;flex:none}.tabs button{background:none;border:0;color:var(--mut);padding:6px 12px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;border-radius:0}
 .tabs button.on{color:var(--txt);border-color:var(--acc)}
 .pill{font-size:12px;color:var(--mut)}.spacer{flex:1}
-button,select,input[type=number],input[type=text]{background:#222b47;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font:inherit}
-button{cursor:pointer}button:hover{background:#2b3659}button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
-button:disabled{opacity:.5;cursor:default}
-main{padding:14px 18px}.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr);gap:14px}
-@media(max-width:1000px){.grid{grid-template-columns:1fr}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
-.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
-.stage{position:relative;background:#000;border-radius:8px;min-height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.stage canvas{max-width:100%;max-height:70vh;display:block}.stage video{display:none}
-#drop{position:absolute;color:var(--mut);pointer-events:none;text-align:center;padding:20px}
+.status{flex:1;min-width:0;display:flex;gap:12px;justify-content:flex-end;align-items:center;overflow:hidden}
+.status .pill,.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+button,select,input[type=number],input[type=text]{background:#222b47;color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 9px;font:inherit}
+button{cursor:pointer;white-space:nowrap}button:hover{background:#2b3659}button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.5;cursor:default}label{white-space:nowrap}
+main{flex:1;min-height:0;padding:8px 10px;display:flex}
+section{flex:1;min-width:0;min-height:0;display:flex}
+.grid{flex:1;min-width:0;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);gap:10px}
+.panel{min-height:0;min-width:0;display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px}
+.toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0;flex:none}
+.stage{position:relative;flex:1;min-height:80px;background:#000;border-radius:8px;overflow:hidden;display:flex}
+.stage canvas{width:100%;height:100%;object-fit:contain;display:block}.stage video{display:none}
+#drop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mut);pointer-events:none;text-align:center;padding:20px;line-height:1.6}
 .stage.over{outline:2px dashed var(--acc)}
-.row{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
-.row img{width:44px;border-radius:4px;background:#000}.row .n{font-weight:600}.row .s{color:var(--mut);font-size:12px}
-.qty{display:flex;gap:4px;align-items:center}.qty input{width:52px}
+.statusline{flex:1;min-width:140px;display:flex;flex-direction:column;overflow:hidden;line-height:1.25}
+.row{display:grid;grid-template-columns:36px 1fr auto;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)}
+.row img{width:36px;border-radius:3px;background:#000}.row .n{font-weight:600}.row .s{color:var(--mut);font-size:12px}
+.qty{display:flex;gap:3px;align-items:center}.qty input{width:48px}.qty button{padding:3px 8px}
 .badge{font-size:11px;border-radius:10px;padding:1px 7px;margin-left:6px;background:var(--warn);color:#000}
 .x{color:var(--bad);background:none;border:0;font-size:16px}
-#pendList{max-height:56vh;overflow:auto}
-table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
-th{position:sticky;top:0;background:#1f2842}.tw{max-height:62vh;overflow:auto;margin-top:8px}
-#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#222b47;border:1px solid var(--line);padding:10px 16px;border-radius:8px;display:none;max-width:80vw}
-.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;width:160px;display:none}.bar i{display:block;height:100%;background:var(--acc);width:0}
+#pendList{flex:1;min-height:60px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:#1f2842}.tw{flex:1;min-height:0;overflow:auto}
+#toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#222b47;border:1px solid var(--line);padding:10px 16px;border-radius:8px;display:none;max-width:80vw;z-index:60}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;width:110px;flex:none;display:none}.bar i{display:block;height:100%;background:var(--acc);width:0}
+a{color:#8fb0ff}
 .hidden{display:none!important}
-.mr{display:flex;gap:8px;align-items:center;padding:4px 6px;cursor:pointer;border-radius:6px}.mr:hover{background:#222b47}.mr img{width:30px;border-radius:3px}
-#mres{margin-bottom:6px}#peek{position:fixed;z-index:50;width:260px;border-radius:12px;display:none;pointer-events:none;box-shadow:0 8px 30px #000}
+.mr{display:flex;gap:8px;align-items:center;padding:3px 6px;cursor:pointer;border-radius:6px}.mr:hover{background:#222b47}.mr img{width:26px;border-radius:3px}
+#mres{flex:none;max-height:140px;overflow:auto}#peek{position:fixed;z-index:50;width:260px;border-radius:12px;display:none;pointer-events:none;box-shadow:0 8px 30px #000}
 th[data-col]:hover{background:#2b3659}
+#suggBox{flex:none;max-height:28%;overflow:auto}
+.sg{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;border-bottom:1px solid var(--line)}.cand{display:flex;flex-direction:column;width:62px;cursor:pointer;font-size:10px;text-align:center;border-radius:6px;padding:2px}.cand img{width:58px;border-radius:4px}.cand:hover{outline:2px solid var(--acc)}
+.qr svg{width:210px;height:210px;display:block;margin:6px 0}
+.modal{position:fixed;z-index:40;left:50%;top:50%;transform:translate(-50%,-50%);max-width:min(900px,94vw);max-height:92vh;overflow:auto;background:#1b2442;border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:0 12px 50px #000}
+#errBar{flex:none;max-height:18vh;overflow:auto}
+@media(max-width:900px){.grid{grid-template-columns:1fr;grid-template-rows:minmax(0,1.3fr) minmax(0,1fr)}header{flex-wrap:wrap}.status{flex-basis:100%;justify-content:flex-start}}
 </style></head><body>
 <header>
-  <h1>🃏 MTG Pile Scanner <span class="pill">v1.9</span></h1>
+  <h1>🃏 MTG Pile Scanner <span class="pill">v2.8</span></h1>
   <div class="tabs"><button class="on" data-tab="scan">Scan</button><button data-tab="coll">Collection</button></div>
-  <div class="spacer"></div>
-  <div class="bar" id="bar"><i></i></div>
-  <span class="pill" id="artStatus"></span><button id="btnArt" class="hidden"></button>
-  <span class="pill" id="dbStatus">Starting…</span>
-  <button id="btnUpdate" title="Check Scryfall for new sets now">Check for new sets</button><button id="btnQuit" title="Stop the scanner">⏻ Quit</button>
+  <div class="status"><div class="bar" id="bar"><i></i></div><span class="pill" id="artStatus"></span><span class="pill" id="dbStatus">Starting…</span></div>
+  <button id="btnArt" class="hidden"></button><button id="btnUpdate" title="Check Scryfall for new sets now">⟳ New sets</button><button id="btnQuit" title="Stop the scanner">⏻ Quit</button>
 </header>
-<div id="errBar" class="hidden" style="background:#5a1f1f;border-bottom:1px solid #a33;padding:10px 18px;white-space:pre-wrap;user-select:text"></div>
+<div id="errBar" class="hidden" style="background:#5a1f1f;border-bottom:1px solid #a33;padding:8px 14px;white-space:pre-wrap;user-select:text"></div>
 <main>
 <section id="tab-scan"><div class="grid">
   <div class="panel">
     <div class="toolbar">
-      <button id="btnUpload">📁 Upload images…</button><input id="file" type="file" accept="image/*" multiple hidden>
-      <button id="btnCam">📷 Start webcam</button><select id="camSel" class="hidden"></select>
-      <label><input type="checkbox" id="useArt" checked> Also match by card art</label>
-      <label><input type="checkbox" id="thorough"> Thorough (also reads sideways/upside-down cards; slower)</label>
+      <button id="btnUpload">📁 Upload</button><input id="file" type="file" accept="image/*" multiple hidden>
+      <button id="btnCam">📷 Start webcam</button><select id="camSel" class="hidden"></select><button id="btnPhone">📱 iPhone</button>
+      <select id="scanMode" title="Instant reads only each card's title strip (cards lying separately, well under a second). Full reads the whole photo (dense piles, slower).">
+        <option value="smart">Speed: automatic</option><option value="instant">Instant (separate cards)</option><option value="full">Full (dense piles)</option></select>
+      <label title="Also identify cards by their artwork"><input type="checkbox" id="useArt" checked> Art</label>
+      <label title="Full mode only: also read sideways / upside-down cards (slower)"><input type="checkbox" id="thorough"> Thorough</label>
     </div>
     <div class="stage" id="stage"><canvas id="view" width="16" height="9"></canvas><video id="video" playsinline muted></video>
-      <div id="drop">Drop photos of your pile here<br>or start the webcam</div></div>
+      <div id="drop">Drop photos here or start the webcam<br><span class="pill">Spread cards so titles are visible and lit. Space = scan the current frame.</span></div></div>
     <div class="toolbar">
-      <button id="btnScan" class="primary" disabled>Scan current frame</button>
-      <button id="btnLive" disabled>▶ Live scan</button>
-      <label>every <input id="interval" type="number" min="1" max="60" value="4" style="width:60px"> s</label>
-      <span class="pill" id="scanStatus"></span>
+      <button id="btnScan" class="primary" disabled>Scan</button>
+      <button id="btnAuto" disabled title="Scans by itself whenever the picture settles">🤖 Auto scan: off</button>
+      <button id="btnLive" disabled title="Rescan on a timer">▶ Live scan</button>
+      <label title="Seconds between live scans">every <input id="interval" type="number" min="1" max="60" value="4" style="width:52px"> s</label>
+      <div class="statusline"><span class="pill ell" id="autoState"></span><span class="pill ell" id="scanStatus"></span></div>
     </div>
-    <div class="pill">Tip: fan or spread cards so each card's title bar is visible and well lit. Green = confident, orange = please check. Press Space to scan the current frame.</div>
   </div>
   <div class="panel">
-    <h2>Detected cards <span class="pill" id="pendCount"></span></h2>
-    <input id="msearch" type="text" placeholder="Missed one? Type a card name to add it…" style="width:100%"><div id="mres"></div>
+    <div class="toolbar" style="justify-content:space-between"><h2>Detected <span class="pill" id="pendCount"></span></h2><span style="display:flex;gap:6px"><button id="btnSetAll" title="Set every detected card to the same quantity">Set all qty…</button><button id="btnClearPending">Clear</button></span></div>
+    <input id="msearch" type="text" placeholder="Missed one? Type a card name to add it…" style="width:100%;flex:none"><div id="mres"></div>
     <div id="pendList"></div>
-    <div class="toolbar"><button id="btnAddAll" class="primary">Add all to collection</button><button id="btnClearPending">Clear</button><button id="btnUndo" disabled title="Undo the last Add">↶ Undo last add</button></div>
+    <div id="suggBox"></div>
+    <div class="toolbar"><button id="btnAddAll" class="primary" style="flex:1">Add all to collection</button><button id="btnUndo" disabled title="Undo the last Add">↶ Undo</button></div>
   </div>
 </div></section>
 
-<section id="tab-coll" class="hidden"><div class="panel">
+<section id="tab-coll" class="hidden"><div class="panel" style="flex:1">
   <div class="toolbar">
     <b id="collSummary"></b><div class="spacer"></div>
-    <input id="filter" type="text" placeholder="Filter…">
-    <button id="btnCopy">📋 Copy table</button><button id="btnDeck" title="Moxfield / Archidekt import format">📋 Copy decklist</button>
+    <input id="filter" type="text" placeholder="Filter…" style="width:150px">
+    <button id="btnCopy">📋 Copy</button><button id="btnDeck" title="Moxfield / Archidekt import format">📋 Decklist</button>
     <a href="/api/export.xlsx"><button>⬇ .xlsx</button></a><a href="/api/export.csv"><button>⬇ .csv</button></a>
+    <a href="/api/art/export"><button title="Save the art index to copy to another computer">⬇ Art index</button></a><button id="btnArtImp" title="Load an art index exported from another computer">⬆ Art index</button><input id="artFile" type="file" accept=".npz" hidden>
     <button id="btnClearColl">Clear collection</button>
   </div>
-  <div class="toolbar"><span class="pill">Auto-saved spreadsheet:</span><input id="exportPath" type="text" style="flex:1;min-width:260px"><button id="btnSavePath">Save path</button><button id="btnFolder" title="Open the folder with your database, backups and spreadsheet">📂 Data folder</button></div>
-  <div class="pill" id="exportMsg"></div>
+  <div class="toolbar"><span class="pill">Auto-saved spreadsheet:</span><input id="exportPath" type="text" style="flex:1;min-width:200px"><button id="btnSavePath">Save path</button><button id="btnFolder" title="Open the folder with your database, backups and spreadsheet">📂 Data folder</button></div>
+  <div class="pill ell" id="exportMsg"></div>
   <div class="tw"><table id="collTable"></table></div>
 </div></section>
 </main><div id="toast"></div>
+
+<div id="phonePanel" class="hidden modal">
+  <div class="toolbar" style="margin-top:0"><b>📱 iPhone camera</b><span class="pill" id="phoneState">waiting for phone…</span><div class="spacer"></div><button id="btnPhoneClose">✕</button></div>
+  <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+    <div><div class="pill">1. Photos (simplest, best quality)</div><div id="qrHttp" class="qr"></div><div class="pill" id="urlHttp" style="max-width:210px;word-break:break-all"></div></div>
+    <div id="liveCol"><div class="pill">2. Live (one-time security OK)</div><div id="qrHttps" class="qr"></div><div class="pill" id="urlHttps" style="max-width:210px;word-break:break-all"></div></div>
+    <div class="pill" id="liveNote" style="max-width:240px;color:var(--warn)"></div>
+    <div class="pill" style="max-width:360px;line-height:1.5">Phone and computer on the same Wi-Fi. Point the iPhone Camera app at a code and tap the link.<br><b>Photos:</b> tap “Take photo”; each shot is scanned here automatically.<br><b>Live:</b> open the 2nd code, tap “Show Details → visit this website”, allow the camera, tap “Start live camera”, then press the button below.<br><br>
+      <label><input type="checkbox" id="phoneAuto" checked> Scan photos as they arrive</label><br>
+      <button id="btnPhoneLive" disabled>Use phone as live camera</button></div>
+  </div></div>
 
 <script>
 const $=s=>document.querySelector(s);
@@ -104,24 +129,25 @@ async function pollStatus(){
     $('#dbStatus').title=u.error||'';$('#dbStatus').style.color=(u.error&&!u.updating)?'var(--warn)':'';
     const eb=$('#errBar');eb.classList.toggle('hidden',!(u.error&&!u.updating));eb.textContent='Card data problem: '+(u.error||'');
     if(u.error&&!u.updating&&u.error!==lastErr){lastErr=u.error;toast('Card data problem: '+u.error,15000)}
-    $('#btnUpdate').textContent=(!s.ready&&!u.updating)?'Retry download':'Check for new sets';
+    $('#btnUpdate').textContent=(!s.ready&&!u.updating)?'Retry download':'⟳ New sets';
     $('.bar').style.display=u.updating?'block':'none';$('.bar i').style.width=(u.progress*100)+'%';
     $('#btnUpdate').disabled=u.updating;$('#exportPath').value=$('#exportPath').matches(':focus')?$('#exportPath').value:s.export_path;
     $('#exportMsg').textContent=s.export.message;$('#btnUndo').disabled=!s.can_undo;
     const a=s.art;artBuilding=a.building;
-    $('#artStatus').textContent=a.total?`Art index ${a.size.toLocaleString()} / ${a.total.toLocaleString()}${a.building?' …building':''}`:'';
-    $('#artStatus').title=a.error||'';const ab=$('#btnArt');ab.classList.toggle('hidden',!s.ready);ab.textContent=a.building?'Pause art index':'Build art index';
+    $('#artStatus').textContent=a.total?`Art index ${a.size.toLocaleString()} / ${a.total.toLocaleString()}${a.building?` …building${a.rate?` · ${Math.round(a.rate)}/s`:''}${a.eta_s?` · ~${a.eta_s>90?Math.round(a.eta_s/60)+' min':a.eta_s+' s'} left`:''}`:''}`:'';
+    $('#artStatus').title=a.error||'';const ab=$('#btnArt');ab.classList.toggle('hidden',!s.ready);ab.textContent=a.building?'⏸ Art index':'🎨 Art index';
     updateButtons();setTimeout(pollStatus,u.updating?1500:10000)}catch{setTimeout(pollStatus,4000)}}
 $('#btnArt').onclick=async()=>{await api(artBuilding?'/api/art/stop':'/api/art/start',{method:'POST'});setTimeout(pollStatus,500)};
 $('#btnUpdate').onclick=async()=>{await api('/api/update',{method:'POST'});pollStatus()};
 
 // ---------- viewer ----------
 const view=$('#view'),vctx=view.getContext('2d'),video=$('#video');
-let mode='none',imgSrc=null,dets=[],stream=null,live=false,busy=false,raf=0;
-function updateButtons(){const ok=dbReady&&mode!=='none';$('#btnScan').disabled=!ok||busy;$('#btnLive').disabled=!(dbReady&&mode==='cam')}
+let phoneLive=false,phoneBlob=null,phoneSeq=0,phoneTimer=0,phoneBusy=false,phoneQueue=[],phoneSeen=new Set();
+let sugg=[],mode='none',imgSrc=null,dets=[],stream=null,live=false,busy=false,raf=0;
+function updateButtons(){const ok=dbReady&&mode!=='none';$('#btnScan').disabled=!ok||busy;$('#btnLive').disabled=!(dbReady&&(mode==='cam'||mode==='phone'));$('#btnAuto').disabled=!(dbReady&&(mode==='cam'||mode==='phone'||autoOn))}
 function paint(){
   let w,h,src;
-  if(mode==='image'&&imgSrc){w=imgSrc.width;h=imgSrc.height;src=imgSrc}
+  if((mode==='image'||mode==='phone')&&imgSrc){w=imgSrc.width;h=imgSrc.height;src=imgSrc}
   else if(mode==='cam'&&video.videoWidth){w=video.videoWidth;h=video.videoHeight;src=video}else return;
   if(view.width!==w||view.height!==h){view.width=w;view.height=h}
   vctx.drawImage(src,0,0);
@@ -129,9 +155,11 @@ function paint(){
   for(const d of dets){const[x,y,bw,bh]=d.box,ok=d.score>=95&&d.verified;
     vctx.strokeStyle=ok?'#2ecc71':'#f39c12';vctx.strokeRect(x,y,bw,bh);
     const label=d.name.length>24?d.name.slice(0,23)+'…':d.name,tw=vctx.measureText(label).width+8;
-    vctx.fillStyle='rgba(15,20,35,.88)';vctx.fillRect(x,y,tw,fs+6);vctx.fillStyle='#fff';vctx.fillText(label,x+4,y+fs)}}
+    vctx.fillStyle='rgba(15,20,35,.88)';vctx.fillRect(x,y,tw,fs+6);vctx.fillStyle='#fff';vctx.fillText(label,x+4,y+fs)}
+  vctx.setLineDash([lw*3,lw*2]);vctx.strokeStyle='#5b8cff';
+  sugg.forEach((s,k)=>{const[x,y,bw,bh]=s.box;vctx.strokeRect(x,y,bw,bh);vctx.fillStyle='#5b8cff';vctx.fillText('?'+(k+1),x+4,y+fs)});vctx.setLineDash([])}
 function loop(){if(mode==='cam'){paint();raf=requestAnimationFrame(loop)}}
-function stopCam(){live=false;$('#btnLive').textContent='▶ Live scan';if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}cancelAnimationFrame(raf);$('#btnCam').textContent='📷 Start webcam';$('#camSel').classList.add('hidden')}
+function stopCam(){live=false;phoneLive=false;if($('#btnPhoneLive'))$('#btnPhoneLive').textContent='Use phone as live camera';$('#btnLive').textContent='▶ Live scan';if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}cancelAnimationFrame(raf);$('#btnCam').textContent='📷 Start webcam';$('#camSel').classList.add('hidden')}
 
 // ---------- upload ----------
 $('#btnUpload').onclick=()=>$('#file').click();
@@ -150,7 +178,7 @@ async function handleFiles(files){
     $('#scanStatus').textContent=`Scanning image ${i+1} of ${files.length}…`;
     await doScan(files[i],'sum')}
   $('#scanStatus').textContent=`Done: ${files.length} image(s) scanned`}
-$('#btnScan').onclick=async()=>{if(mode==='image'){const b=await new Promise(r=>{const c=document.createElement('canvas');c.width=imgSrc.width;c.height=imgSrc.height;c.getContext('2d').drawImage(imgSrc,0,0);c.toBlob(r,'image/jpeg',.95)});await doScan(b,'sum')}else if(mode==='cam')await scanFrame('sum')}
+$('#btnScan').onclick=async()=>{if(mode==='image'){const b=await new Promise(r=>{const c=document.createElement('canvas');c.width=imgSrc.width;c.height=imgSrc.height;c.getContext('2d').drawImage(imgSrc,0,0);c.toBlob(r,'image/jpeg',.95)});await doScan(b,'sum')}else if(mode==='cam')await scanFrame('sum');else if(mode==='phone'&&phoneBlob)await doScan(phoneBlob,'sum')}
 
 // ---------- webcam ----------
 async function startCam(id){
@@ -166,21 +194,24 @@ async function startCam(id){
 $('#btnCam').onclick=()=>{if(stream){stopCam();mode='none';updateButtons()}else startCam()};
 $('#camSel').onchange=e=>startCam(e.target.value);
 async function scanFrame(how){
-  const c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;c.getContext('2d').drawImage(video,0,0);
-  const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.92));return doScan(b,how)}
+  if(mode==='phone'){if(!phoneBlob)return;return doScan(phoneBlob,how)}
+  const k=modeFor(how)==='instant'?Math.min(1,1600/Math.max(video.videoWidth,video.videoHeight)):1;
+  const c=document.createElement('canvas');c.width=Math.round(video.videoWidth*k);c.height=Math.round(video.videoHeight*k);c.getContext('2d').drawImage(video,0,0,c.width,c.height);
+  const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.88));return doScan(b,how)}
+function modeFor(how){const v=$('#scanMode').value;if(v!=='smart')return v;return(mode==='cam'||mode==='phone')?'instant':'full'}
 $('#btnLive').onclick=async()=>{
   if(live){live=false;$('#btnLive').textContent='▶ Live scan';return}
   live=true;$('#btnLive').textContent='⏸ Stop live scan';
-  while(live&&mode==='cam'){await scanFrame('max');if(!live)break;
+  while(live&&(mode==='cam'||mode==='phone')){await scanFrame('max');if(!live)break;
     await new Promise(r=>setTimeout(r,Math.max(1,+$('#interval').value||4)*1000))}
   live=false;$('#btnLive').textContent='▶ Live scan'};
 
 async function doScan(blob,how){
   busy=true;updateButtons();$('#scanStatus').textContent='Scanning…';
-  try{const fd=new FormData();fd.append('file',blob,'scan.jpg');fd.append('thorough',$('#thorough').checked);fd.append('use_art',$('#useArt').checked);fd.append('fast',how==='max');
+  try{const fd=new FormData();fd.append('file',blob,'scan.jpg');fd.append('thorough',$('#thorough').checked);fd.append('use_art',$('#useArt').checked);fd.append('fast',how==='max');fd.append('mode',modeFor(how));
     const res=await api('/api/scan',{method:'POST',body:fd});
-    dets=res.detections;if(mode==='image')paint();mergePending(dets,how);
-    $('#scanStatus').textContent=`${dets.length} cards found in ${res.elapsed}s`+(res.art_found?` (${res.art_found} by art)`:(($('#useArt').checked&&res.art_index<(res.art_total||1)*0.9)?` — art index ${res.art_index.toLocaleString()} of ${(res.art_total||0).toLocaleString()} built; art matching improves as it finishes`:''))}
+    dets=res.detections;sugg=res.suggestions||[];renderSugg();if(mode==='image'||mode==='phone')paint();if(how==='auto')handleAuto(res);else mergePending(dets,how);
+    $('#scanStatus').textContent=`${dets.length} cards in ${res.elapsed}s${res.mode==='instant-fallback'?' (no separate cards found: quick full-frame read - use Full for dense piles)':''}`+(res.text_found?` (${res.text_found} by rules text)`:'')+(res.suggestions&&res.suggestions.length?` · ${res.suggestions.length} possible art matches (blue ?)`:'')+(res.art_found?` (${res.art_found} by art)`:(($('#useArt').checked&&res.art_index<(res.art_total||1)*0.9)?` — art index ${res.art_index.toLocaleString()} of ${(res.art_total||0).toLocaleString()} built; art matching improves as it finishes`:''))}
   catch(e){$('#scanStatus').textContent='Scan failed: '+e.message;live=false}
   busy=false;updateButtons()}
 
@@ -190,16 +221,16 @@ function mergePending(ds,how){
   const counts=new Map();
   for(const d of ds){const c=counts.get(d.card_id)||{...d,count:0};c.count++;counts.set(d.card_id,c)}
   for(const[id,c]of counts){let it=pending.get(id);
-    if(!it){it={card_id:id,name:c.name,set_code:c.set_code,number:c.collector_number,image:c.image_url,score:c.score,verified:c.verified,method:c.method,include:c.method==='art'?c.score>=85:c.score>=95,qty:0,foil:0,printings:null};pending.set(id,it)}
-    it.qty=how==='sum'?it.qty+c.count:Math.max(it.qty,c.count)}
+    if(!it){it={t:Date.now(),card_id:id,name:c.name,set_code:c.set_code,number:c.collector_number,image:c.image_url,score:c.score,verified:c.verified,method:c.method,include:c.method==='art'?c.score>=85:(c.method==='text'?true:c.score>=95),qty:0,foil:0,printings:null};pending.set(id,it)}
+    const q0=it.qty;it.qty=how==='sum'?it.qty+c.count:Math.max(it.qty,c.count);if(it.qty!==q0)it.t=Date.now()}
   renderPending()}
 function renderPending(){
-  const items=[...pending.values()].sort((a,b)=>review(b)-review(a));
+  const items=[...pending.values()].sort((a,b)=>(b.t||0)-(a.t||0));   // newest scan first
   $('#pendCount').textContent=items.length?`${items.reduce((a,i)=>a+i.qty,0)} cards · ${items.length} unique`:'';
   $('#btnAddAll').textContent=`Add ${items.filter(i=>i.include).reduce((a,i)=>a+i.qty,0)} selected to collection`;
   $('#pendList').innerHTML=items.length?items.map(i=>`<div class="row" data-id="${esc(i.card_id)}">
     <img src="${esc(i.image)}" data-img="${esc(big(i.image))}" alt="">
-    <div><div class="n"><input type="checkbox" class="inc" ${i.include?'checked':''} title="Include when adding"> ${esc(i.name)}${i.method==='art'?'<span class="badge">matched by art</span>':(i.score<95?'<span class="badge">low confidence</span>':'')}${!i.verified?'<span class="badge">check printing</span>':''}</div>
+    <div><div class="n"><input type="checkbox" class="inc" ${i.include?'checked':''} title="Include when adding"> ${esc(i.name)}${i.method==='text'?'<span class="badge" style="background:#5b8cff;color:#fff">matched by rules text</span>':i.method==='art'?'<span class="badge">matched by art</span>':(i.score<95?'<span class="badge">low confidence</span>':'')}${!i.verified?'<span class="badge">check printing</span>':''}</div>
     <div class="s">${i.printings?`<select class="pr">${i.printings.map(p=>`<option value="${esc(p.id)}" ${p.id===i.card_id?'selected':''}>${esc(p.set_code.toUpperCase())} #${esc(p.collector_number)} · ${esc(p.set_name)}</option>`).join('')}</select>`
       :`${esc(i.set_code.toUpperCase())} #${esc(i.number)} <a href="#" class="chg">change printing</a>`}
       <label><input type="checkbox" class="foil" ${i.foil?'checked':''}> foil</label></div></div>
@@ -219,7 +250,13 @@ $('#pendList').addEventListener('change',e=>{
   else if(e.target.matches('.pr')){const p=it.printings.find(x=>x.id===e.target.value);pending.delete(it.card_id);
     const ex=pending.get(p.id);if(ex){ex.qty+=it.qty}else{Object.assign(it,{card_id:p.id,set_code:p.set_code,number:p.collector_number,image:p.image_url,verified:true});pending.set(p.id,it)}}
   renderPending()});
-$('#btnClearPending').onclick=()=>{pending.clear();renderPending()};
+$('#btnSetAll').onclick=()=>{
+  if(!pending.size){toast('Nothing detected yet.');return}
+  const v=prompt('Change all quantities in the Detected list to:','1');if(v===null)return;
+  const q=Math.floor(+v);if(!(q>=1&&q<=9999)){toast('Enter a whole number from 1 to 9999.');return}
+  for(const it of pending.values())it.qty=q;
+  renderPending()};
+$('#btnClearPending').onclick=()=>{pending.clear();presence.clear();dropCnt.clear();renderPending()};
 $('#btnAddAll').onclick=async()=>{
   const items=[...pending.values()].filter(i=>i.include).map(i=>({card_id:i.card_id,qty:i.qty,foil:i.foil}));if(!items.length)return;
   try{const r=await api('/api/collection/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
@@ -270,6 +307,111 @@ $('#btnFolder').onclick=()=>api('/api/open-folder',{method:'POST'});
 $('#btnDeck').onclick=async()=>{const t=coll.rows.map(r=>`${r[0]} ${r[2]} (${r[3]}) ${r[5]}${r[1]?' *F*':''}`).join('\n');
   try{await navigator.clipboard.writeText(t)}catch{const x=document.createElement('textarea');x.value=t;document.body.append(x);x.select();document.execCommand('copy');x.remove()}toast('Decklist copied (Moxfield / Archidekt import format).')};
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)&&!$('#btnScan').disabled){e.preventDefault();$('#btnScan').click()}});
+
+function renderSugg(){const b=$('#suggBox');if(!sugg.length){b.innerHTML='';return}
+  b.innerHTML='<h2 style="margin-top:12px">Possible art matches <span class="pill">click the right card, or ignore</span></h2>'+sugg.map((s,k)=>`<div class="sg" data-k="${k}"><b>?${k+1}</b>`+s.cands.map(c=>`<span class="cand" data-id="${esc(c.card_id)}" title="similarity ${c.sim}"><img src="${esc(c.image_url)}" data-img="${esc(big(c.image_url))}"><span>${esc(c.name)}</span></span>`).join('')+'</div>').join('')}
+$('#suggBox').onclick=e=>{const el=e.target.closest('.cand');if(!el)return;const k=+el.closest('.sg').dataset.k,c=sugg[k].cands.find(x=>x.card_id===el.dataset.id);
+  let it=pending.get(c.card_id);if(!it){it={card_id:c.card_id,name:c.name,set_code:c.set_code,number:c.collector_number,image:c.image_url,score:100,verified:false,method:'manual',include:true,qty:0,foil:0,printings:null};pending.set(c.card_id,it)}
+  it.qty++;sugg.splice(k,1);renderSugg();renderPending();if(mode==='image'||mode==='phone')paint()};
+// ---------- iPhone camera ----------
+$('#btnPhone').onclick=async()=>{
+  const p=$('#phonePanel'),open=p.classList.toggle('hidden')===false;
+  if(open){try{const i=await api('/api/phone/info');
+      $('#qrHttp').innerHTML=i.qr_http||'';$('#urlHttp').textContent=i.http;
+      $('#liveCol').classList.toggle('hidden',!i.https);$('#liveNote').textContent=i.https?'':(i.https_error?'Live mode is off on this computer ('+i.https_error+'). Photo mode (code 1) still works.':'Live mode is still starting - close and reopen this panel in a few seconds.');$('#qrHttps').innerHTML=i.qr_https||'';$('#urlHttps').textContent=i.https||''}
+    catch(e){toast(e.message)}
+    clearInterval(phoneTimer);phoneTimer=setInterval(pollPhone,800)}
+  else clearInterval(phoneTimer)};
+$('#btnPhoneClose').onclick=()=>$('#btnPhone').click();
+async function pollPhone(){
+  try{const s=await api('/api/phone/poll');
+    $('#phoneState').textContent=s.connected?'📱 phone connected':'waiting for phone…';$('#phoneState').style.color=s.connected?'var(--ok)':'';
+    $('#btnPhoneLive').disabled=!(s.frame_seq>0);
+    for(const id of s.photos)if(!phoneSeen.has(id)){phoneSeen.add(id);phoneQueue.push(id)}
+    drainPhotos();
+  }catch{}}
+let phonePump=false;
+async function pumpPhone(){            // continuous long-poll: each frame is shown the moment it arrives
+  if(phonePump)return;phonePump=true;let fails=0;
+  while(phoneLive){
+    try{const r=await fetch('/api/phone/next?after='+phoneSeq,{cache:'no-store'});
+      if(r.status===200){phoneSeq=+r.headers.get('X-Seq');const blob=await r.blob(),bmp=await createImageBitmap(blob);
+        if(!phoneLive)break;phoneBlob=blob;const old=imgSrc;imgSrc=bmp;if(old&&old.close&&old!==bmp)try{old.close()}catch{};paint()}
+      else if(r.status===204)phoneSeq=+r.headers.get('X-Seq')||phoneSeq;fails=0}
+    catch{await new Promise(r=>setTimeout(r,Math.min(2000,200*++fails)))}}
+  phonePump=false}
+async function drainPhotos(){
+  if(phoneBusy||!phoneQueue.length)return;phoneBusy=true;
+  try{while(phoneQueue.length){const id=phoneQueue.shift(),r=await fetch('/api/phone/photo/'+id);if(!r.ok)continue;
+      const blob=await r.blob();stopCam();mode='image';imgSrc=await createImageBitmap(blob);dets=[];sugg=[];renderSugg();
+      $('#drop').classList.add('hidden');paint();updateButtons();
+      if($('#phoneAuto').checked){$('#scanStatus').textContent='Scanning iPhone photo…';await doScan(blob,'sum')}}}
+  finally{phoneBusy=false}}
+$('#btnPhoneLive').onclick=()=>{
+  const on=!phoneLive;stopCam();phoneLive=on;
+  if(on){mode='phone';dets=[];sugg=[];renderSugg();$('#drop').classList.add('hidden');$('#btnPhoneLive').textContent='Stop phone live camera';pumpPhone()}
+  else{mode=imgSrc?'image':'none';$('#btnPhoneLive').textContent='Use phone as live camera'}
+  updateButtons()};
+
+$('#btnArtImp').onclick=()=>$('#artFile').click();
+$('#artFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('file',f);
+  try{const r=await api('/api/art/import',{method:'POST',body:fd});toast(`Imported ${r.entries.toLocaleString()} art entries.`);pollStatus()}catch(x){toast(x.message)}e.target.value=''};
+// ---------- auto scan ----------
+let autoOn=false,autoLast=null,autoMoveAt=0,autoScanned=false,autoBusy=false;
+const MOVE_FRAC=0.015;
+const presence=new Map(),dropCnt=new Map();            // card_id -> copies currently in view / how many scans in a row showed fewer
+const settleMs=()=>modeFor('auto')==='instant'?90:1200;
+const sc=document.createElement('canvas');sc.width=48;sc.height=36;const sx=sc.getContext('2d',{willReadFrequently:true});sx.imageSmoothingQuality='high';
+function smallFrame(){
+  let src=null;if(mode==='cam'&&video.videoWidth)src=video;else if(mode==='phone'&&imgSrc)src=imgSrc;if(!src)return null;
+  sx.drawImage(src,0,0,48,36);const d=sx.getImageData(0,0,48,36).data,g=new Uint8Array(48*36);
+  for(let i=0;i<g.length;i++)g[i]=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;return g}
+function frac(a,b,t){let n=0;for(let i=0;i<a.length;i++)if(Math.abs(a[i]-b[i])>t)n++;return n/a.length}
+function newItem(id,c){return {t:Date.now(),card_id:id,name:c.name,set_code:c.set_code,number:c.collector_number,image:c.image_url,score:c.score,verified:c.verified,method:c.method,
+  include:c.method==='art'?c.score>=85:(c.method==='text'?true:c.score>=95),qty:0,foil:0,printings:null}}
+const inView=()=>{let n=0;for(const v of presence.values())n+=v;return n};
+// Identical cards are interchangeable, so only copies BEYOND what is already in view are new. A card that was merely missed
+// or hidden by a hand in one scan is not forgotten (it must be gone for 2 scans in a row), so it can never be counted twice.
+// Whole-table changes (brightness, shadows) cannot cause duplicates because nothing depends on how much the picture changed.
+function handleAuto(res){
+  const ds=res.detections,byId=new Map();
+  for(const d of ds){const c=byId.get(d.card_id)||{...d,count:0};c.count++;byId.set(d.card_id,c)}
+  for(const[id,c]of byId){
+    const prev=presence.get(id)||0;
+    if(c.count>prev){let it=pending.get(id);if(!it){it=newItem(id,c);pending.set(id,it)}it.qty+=c.count-prev;it.t=Date.now();presence.set(id,c.count);dropCnt.set(id,0)}
+    else if(c.count<prev){const k=(dropCnt.get(id)||0)+1;dropCnt.set(id,k);if(k>=2){presence.set(id,c.count);dropCnt.set(id,0)}}
+    else dropCnt.set(id,0)}
+  const emptyTable=!ds.length&&res.rects===0;                    // no card shapes at all: the table was cleared
+  const unreadable=!ds.length&&res.rects>0;                      // cards are there but could not be read: do not guess
+  for(const[id]of [...presence]){
+    if(byId.has(id))continue;
+    if(emptyTable){presence.delete(id);dropCnt.delete(id);continue}
+    if(unreadable)continue;
+    const k=(dropCnt.get(id)||0)+1;dropCnt.set(id,k);if(k>=2){presence.delete(id);dropCnt.delete(id)}}
+  renderPending()}
+// returns 'scan' or a status message; called every 120 ms with the current small frame
+function autoDecide(s,now,busyNow){
+  if(autoLast&&frac(s,autoLast,22)>MOVE_FRAC){autoMoveAt=now;autoScanned=false}
+  autoLast=s;
+  if(busyNow)return 'Scanning…';
+  if(autoScanned)return `${inView()} card${inView()===1?'':'s'} in view - change the cards to scan again`;
+  if(now-autoMoveAt<settleMs())return 'Hold still…';
+  return 'scan'}
+function setAuto(t){$('#autoState').textContent=t}
+setInterval(async()=>{
+  if(!autoOn)return;
+  const s=smallFrame();if(!s){setAuto('Start the webcam or phone live camera first');return}
+  const act=autoDecide(s,Date.now(),busy||autoBusy);
+  if(act!=='scan'){setAuto(act);return}
+  autoBusy=true;const t0=Date.now();setAuto('Scanning…');
+  try{await scanFrame('auto')}finally{autoBusy=false}
+  autoScanned=!(autoMoveAt>t0)},35);
+$('#btnAuto').onclick=()=>{
+  if(!autoOn&&!(mode==='cam'||mode==='phone')){toast('Start the webcam, or the iPhone live camera, first.');return}
+  autoOn=!autoOn;live=false;$('#btnLive').textContent='▶ Live scan';
+  $('#btnAuto').textContent=autoOn?'🤖 Auto scan: ON':'🤖 Auto scan: off';$('#btnAuto').classList.toggle('primary',autoOn);
+  autoLast=null;autoScanned=false;autoMoveAt=0;if(!autoOn)setAuto('')};
+// ---------- end auto scan ----------
 
 renderPending();pollStatus();
 </script></body></html>

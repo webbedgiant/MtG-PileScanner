@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS collection(
   card_id TEXT, foil INTEGER DEFAULT 0, qty INTEGER NOT NULL,
   added_at TEXT, updated_at TEXT, PRIMARY KEY(card_id, foil));
 CREATE TABLE IF NOT EXISTS art(illustration_id TEXT PRIMARY KEY, card_id TEXT, desc BLOB);
+CREATE TABLE IF NOT EXISTS oracle(oracle_id TEXT PRIMARY KEY, name TEXT, text TEXT);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 """
 

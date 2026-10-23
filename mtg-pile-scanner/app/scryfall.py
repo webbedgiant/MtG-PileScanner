@@ -2,7 +2,7 @@
 import gzip, json, logging, re, sqlite3, threading, time, unicodedata
 import requests, ijson
 from rapidfuzz import fuzz, process
-from . import db
+from . import db, net
 
 log = logging.getLogger("mtg")
 log.setLevel(logging.INFO)
@@ -80,6 +80,11 @@ def rebuild_index():
         v.sort(key=lambda t: t[3], reverse=True)
         v.sort(key=lambda t: (t[4], t[5] in BAD_SET_TYPES))
     INDEX.update(names=list(by_name.keys()), by_name=by_name, sets=sets)
+    try:
+        from . import textindex
+        textindex.build()
+    except Exception:
+        log.exception("rules-text index failed")
 
 
 def ready():
@@ -113,41 +118,47 @@ def _download_uri(entry, depth=0):
         if "download" in k.lower() and isinstance(v, str) and v.startswith("http"):
             return v
     if depth == 0 and isinstance(entry.get("uri"), str):  # the entry's own API page usually has the link
-        r = requests.get(entry["uri"], headers=HEADERS, timeout=30)
+        r = net.get(entry["uri"], headers=HEADERS, timeout=30)
         r.raise_for_status()
         return _download_uri(r.json(), 1)
     raise RuntimeError(f"Scryfall bulk entry has no download link. Fields present: {sorted(entry)}")
 
 
 def _import_file(path):
-    """Import a Scryfall default-cards JSON file using its own connection and small transactions."""
+    """Import a Scryfall default-cards file (JSON array or JSON Lines, gzip or plain)."""
     size = path.stat().st_size or 1
     conn = sqlite3.connect(db.DB_PATH, isolation_level=None, timeout=60)
     try:
         conn.execute("PRAGMA busy_timeout=60000")
-        batch, n = [], 0
+        batch, obatch, seen_oracle, n = [], [], set(), 0
 
         def flush():
-            nonlocal batch
-            if batch:
+            nonlocal batch, obatch
+            if batch or obatch:
                 conn.execute("BEGIN")
-                conn.executemany(INSERT, batch)
+                if batch:
+                    conn.executemany(INSERT, batch)
+                if obatch:
+                    conn.executemany("INSERT OR REPLACE INTO oracle(oracle_id,name,text) VALUES(?,?,?)", obatch)
                 conn.execute("COMMIT")
-                batch = []
+                batch, obatch = [], []
 
         with open(path, "rb") as raw:
-            gz = raw.read(2) == b"\x1f\x8b"  # file may be gzip-compressed even without a .gz name
+            gz = raw.read(2) == b"\x1f\x8b"
             raw.seek(0)
             f = gzip.GzipFile(fileobj=raw) if gz else raw
-            first = f.peek(64).lstrip()[:1]  # '[' = JSON array, '{' = JSON Lines (one card per line)
-            if first == b"[":
-                cards = ijson.items(f, "item")
-            else:
-                cards = (json.loads(line) for line in f if line.strip())
+            first = f.peek(64).lstrip()[:1]  # '[' = JSON array, '{' = JSON Lines
+            cards = ijson.items(f, "item") if first == b"[" else (json.loads(l) for l in f if l.strip())
             for c in cards:
                 if keep(c):
                     batch.append(to_row(c))
                     n += 1
+                    faces = c.get("card_faces") or []
+                    oid = c.get("oracle_id") or (faces[0].get("oracle_id") if faces else None)
+                    if oid and oid not in seen_oracle:
+                        seen_oracle.add(oid)
+                        text = c.get("oracle_text") or "\n".join(fc.get("oracle_text") or "" for fc in faces)
+                        obatch.append((oid, c["name"], text))
                 if len(batch) >= 3000:
                     flush()
                     STATE["progress"] = 0.4 + 0.6 * min(raw.tell() / size, 1.0)
@@ -171,7 +182,7 @@ def update_bulk(force=False):
             STATE["message"] = f"Card database imported ({card_count():,} printings)"
             return
         try:
-            r = requests.get(BULK_URL, headers=HEADERS, timeout=30)
+            r = net.get(BULK_URL, headers=HEADERS, timeout=30)
             r.raise_for_status()
         except Exception as e:
             raise RuntimeError(f"Could not reach api.scryfall.com ({type(e).__name__}: {e}). "
@@ -180,13 +191,13 @@ def update_bulk(force=False):
         dl_uri = _download_uri(entry)
         version = str(entry.get("updated_at") or dl_uri)
         if (not force and db.meta_get("bulk_updated_at") == version and card_count() > 0
-                and db.meta_get("cards_schema") == "3"):
+                and db.meta_get("cards_schema") == "4"):
             STATE["message"] = "Card database is up to date"
             return
         STATE["message"] = "Downloading latest card data from Scryfall…"
         log.info("Downloading %s", dl_uri)
         try:
-            with requests.get(dl_uri, headers=HEADERS, stream=True, timeout=(30, 120)) as resp:
+            with net.get(dl_uri, headers=HEADERS, stream=True, timeout=(30, 120)) as resp:
                 resp.raise_for_status()
                 total, done = entry.get("size") or 0, 0
                 with open(tmp, "wb") as f:
@@ -202,7 +213,7 @@ def update_bulk(force=False):
         STATE["message"] = "Importing cards (first run takes a few minutes)…"
         _import_file(tmp)
         db.meta_set("bulk_updated_at", version)
-        db.meta_set("cards_schema", "3")
+        db.meta_set("cards_schema", "4")
         rebuild_index()
         STATE["message"] = f"Card database updated ({card_count():,} printings)"
         log.info(STATE["message"])

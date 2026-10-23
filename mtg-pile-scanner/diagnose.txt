@@ -1,0 +1,41 @@
+Python 3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)] Windows-11-10.0.26200-SP0
+truststore active
+[FAIL] api.scryfall.com bulk-data:
+Traceback (most recent call last):
+  File "C:\Users\ajhar\Downloads\mtg-pile-scanner(2)\mtg-pile-scanner\diagnose.py", line 7, in step
+    log(f"[ OK ] {name}: {fn()}")
+                          ~~^^
+  File "C:\Users\ajhar\Downloads\mtg-pile-scanner(2)\mtg-pile-scanner\diagnose.py", line 22, in bulk
+    info["uri"] = e["download_uri"]; return f"{r.status_code}, default_cards updated {e['updated_at']}"
+                  ~^^^^^^^^^^^^^^^^
+KeyError: 'download_uri'
+
+[ OK ] python packages: ijson backend=yajl2_c, cv2=5.0.0
+[ OK ] OCR engine: OCR engine loads
+[ OK ] data folder writable: C:\Users\ajhar\AppData\Roaming\MTGPileScanner
+--- last lines of app.log ---
+    log.info("Downloading %s", entry["download_uri"])
+                               ~~~~~^^^^^^^^^^^^^^^^
+KeyError: 'download_uri'
+Card data update failed
+Traceback (most recent call last):
+  File "C:\Users\ajhar\Downloads\mtg-pile-scanner(2)\mtg-pile-scanner\app\scryfall.py", line 108, in update_bulk
+    log.info("Downloading %s", entry["download_uri"])
+                               ~~~~~^^^^^^^^^^^^^^^^
+KeyError: 'download_uri'
+Card data update failed
+Traceback (most recent call last):
+  File "C:\Users\ajhar\Downloads\mtg-pile-scanner(2)\mtg-pile-scanner\app\scryfall.py", line 148, in update_bulk
+    log.info("Downloading %s", entry["download_uri"])
+                               ~~~~~^^^^^^^^^^^^^^^^
+KeyError: 'download_uri'
+Downloading https://data.scryfall.io/default-cards/default-cards-20261021210600.jsonl.gz
+Card data update failed
+Traceback (most recent call last):
+  File "C:\Users\ajhar\Downloads\mtg-pile-scanner(2)\mtg-pile-scanner\app\scryfall.py", line 191, in update_bulk
+    _import_file(tmp)
+    ~~~~~~~~~~~~^^^^^
+  File "C:\Users\ajhar\Downloads\mtg-pile-scanner(2)\mtg-pile-scanner\app\scryfall.py", line 136, in _import_file
+    for c in ijson.items(f, "item"):
+             ~~~~~~~~~~~^^^^^^^^^^^
+ijson.common.IncompleteJSONError: b'lexical error: invalid char in json text.\n                                       \x1f\x8b\x08                     (right here) ------^\n'

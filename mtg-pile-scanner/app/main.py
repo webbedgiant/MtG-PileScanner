@@ -1,16 +1,16 @@
-import hashlib, os, subprocess, sys, threading
+import hashlib, json, os, subprocess, sys, threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel
 
 import time
 from rapidfuzz import fuzz, process
-from . import art, collection, db, export, scanner, scryfall
+from . import art, collection, db, export, phone, scanner, scryfall
 
 STATIC = Path(__file__).parent / "static"
 LAST_EXPORT = {"ok": None, "message": "No export yet", "time": None}
@@ -81,6 +81,115 @@ def update():
     return {"ok": True}
 
 
+PHONE_PATHS = {"/phone", "/api/phone/frame", "/api/phone/photo", "/api/phone/ping"}
+
+
+@app.middleware("http")
+async def lan_guard(request: Request, call_next):
+    """The server listens on the LAN so the iPhone can reach it, but only the phone pages (which also need the
+    secret token) are reachable from other devices. Everything else is localhost-only."""
+    host = request.client.host if request.client else ""
+    if not (host in ("::1", "localhost") or host.endswith("127.0.0.1")) and request.url.path not in PHONE_PATHS:
+        return JSONResponse({"detail": "Local access only"}, status_code=403)
+    return await call_next(request)
+
+
+def _need_token(t):
+    if not phone.check(t):
+        raise HTTPException(403, "Invalid or expired link. Scan the QR code in the desktop app again.")
+
+
+@app.get("/phone")
+def phone_page(t: str = ""):
+    _need_token(t)
+    html = (STATIC / "phone.html").read_text(encoding="utf-8")
+    return HTMLResponse(html.replace("__HTTPS_URL__", json.dumps(phone.urls()[1] or "")))
+
+
+@app.post("/api/phone/ping")
+def phone_ping(t: str = ""):
+    _need_token(t)
+    phone.touch()
+    return {"ok": True}
+
+
+@app.post("/api/phone/frame")
+async def phone_frame(request: Request, t: str = ""):
+    _need_token(t)
+    body = await request.body()
+    if not body or len(body) > 25_000_000:
+        raise HTTPException(400, "Bad image")
+    phone.set_frame(body)
+    return {"ok": True}
+
+
+@app.post("/api/phone/photo")
+def phone_photo(file: UploadFile = File(...), t: str = ""):
+    _need_token(t)
+    data = file.file.read()
+    if not data or len(data) > 40_000_000:
+        raise HTTPException(400, "Bad image")
+    return {"ok": True, "id": phone.add_photo(data)}
+
+
+@app.get("/api/phone/info")
+def phone_info():
+    http, https = phone.urls()
+    return {"http": http, "https": https, "https_error": phone.STATE["https_error"], "qr_http": phone.qr_svg(http),
+            "qr_https": phone.qr_svg(https) if https else ""}
+
+
+@app.get("/api/phone/poll")
+def phone_poll():
+    return phone.poll()
+
+
+@app.get("/api/phone/next")
+def phone_next(after: int = 0):
+    """Long-poll: returns the instant a frame newer than `after` arrives (push-like, no polling delay)."""
+    seq, b = phone.wait_frame(after)
+    if b is None:
+        return Response(status_code=204, headers={"X-Seq": str(seq), "Cache-Control": "no-store"})
+    return Response(b, media_type="image/jpeg", headers={"X-Seq": str(seq), "Cache-Control": "no-store"})
+
+
+@app.get("/api/phone/frame.jpg")
+def phone_frame_get():
+    b = phone.STATE["frame"]
+    if not b:
+        raise HTTPException(404, "No frame yet")
+    return Response(b, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/phone/photo/{pid}")
+def phone_photo_get(pid: int):
+    b = phone.pop_photo(pid)
+    if b is None:
+        raise HTTPException(404, "Photo already collected")
+    return Response(b, media_type="image/jpeg")
+
+
+@app.get("/api/art/export")
+def art_export():
+    p = db.DATA_DIR / "art_index_export.npz"
+    art.export_index(p)
+    return FileResponse(p, filename="mtg_art_index.npz", media_type="application/octet-stream")
+
+
+@app.post("/api/art/import")
+def art_import(file: UploadFile = File(...)):
+    p = db.DATA_DIR / "art_index_import.npz"
+    with open(p, "wb") as f:
+        f.write(file.file.read())
+    try:
+        n = art.import_index(p)
+    except Exception as e:
+        raise HTTPException(400, f"Could not import: {e}")
+    finally:
+        p.unlink(missing_ok=True)
+    return {"ok": True, "entries": n}
+
+
 @app.post("/api/art/start")
 def art_start():
     threading.Thread(target=art.build_index, daemon=True).start()
@@ -98,17 +207,17 @@ SCAN_CACHE = {}
 
 @app.post("/api/scan")
 def scan(file: UploadFile = File(...), thorough: bool = Form(False), use_art: bool = Form(True),
-         fast: bool = Form(False)):
+         fast: bool = Form(False), mode: str = Form("full")):
     if not scryfall.ready():
         raise HTTPException(503, "The card database is still downloading. Try again in a minute.")
     data = file.file.read()
-    key = (hashlib.sha1(data).hexdigest(), thorough, use_art, fast, art.size() // 500)
+    key = (hashlib.sha1(data).hexdigest(), thorough, use_art, fast, mode, art.size() // 500)
     if key in SCAN_CACHE:  # identical image + settings: answer instantly
         return {**SCAN_CACHE[key], "cached": True}
     img = scanner.decode(data)
     if img is None:
         raise HTTPException(400, "Could not read that image.")
-    res = scanner.scan(img, thorough, use_art, fast)
+    res = scanner.scan_instant(img, use_art) if mode == "instant" else scanner.scan(img, thorough, use_art, fast)
     SCAN_CACHE[key] = res
     while len(SCAN_CACHE) > 8:
         SCAN_CACHE.pop(next(iter(SCAN_CACHE)))

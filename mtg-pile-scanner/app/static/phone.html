@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>MTG Scanner camera</title>
+<style>
+body{margin:0;padding:18px;padding-top:max(18px,env(safe-area-inset-top));font:16px -apple-system,system-ui,sans-serif;background:#0f1423;color:#e8ecf8}
+.btn,button{display:block;width:100%;box-sizing:border-box;padding:18px;margin:10px 0;border-radius:14px;border:0;background:#5b8cff;color:#fff;font-size:18px;font-weight:600;text-align:center}
+button.alt{background:#222b47}button:disabled{opacity:.5}
+video{width:100%;border-radius:12px;background:#000;display:none}.s{color:#8b96b8;font-size:14px;line-height:1.4}#log{margin-top:12px;min-height:20px}hr{border:0;border-top:1px solid #2a3452;margin:18px 0}
+a{color:#8fb0ff}
+</style></head><body>
+<h2>📱 MTG Scanner camera</h2>
+<label class="btn">📷 Take photo
+  <input id="shot" type="file" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:0;height:0"></label>
+<div class="s">Best quality. Each photo is sent to your computer and scanned automatically. Spread the cards so titles and art are visible and well lit.</div>
+<hr>
+<button id="live" class="alt">🎥 Start live camera</button>
+<video id="v" playsinline muted></video>
+<div class="s" id="liveHint"></div>
+<div id="log" class="s"></div>
+<script>
+const T=new URLSearchParams(location.search).get('t')||'',HTTPS_URL=__HTTPS_URL__;
+const $=id=>document.getElementById(id),log=m=>$('log').textContent=m;
+let sent=0,streaming=false,stream=null;
+setInterval(()=>fetch('/api/phone/ping?t='+T,{method:'POST'}).catch(()=>{}),3000);
+$('shot').onchange=async e=>{const f=e.target.files[0];if(!f)return;log('Sending…');
+  const fd=new FormData();fd.append('file',f,'photo.jpg');
+  try{const r=await fetch('/api/phone/photo?t='+T,{method:'POST',body:fd});
+    if(!r.ok)throw new Error(r.status===403?'Link expired - scan the QR code on your computer again':'Upload failed ('+r.status+')');
+    sent++;log('✓ Sent '+sent+' photo(s). Take the next one any time.')}catch(err){log('⚠ '+err.message)}
+  e.target.value=''};
+if(!window.isSecureContext){
+  $('liveHint').innerHTML=HTTPS_URL?'Live mode needs a secure page: <a href="'+HTTPS_URL+'">open the secure version</a> (tap “Show Details”, then “visit this website”, then allow the camera).':'Live mode is unavailable on this connection; photos work fine.';
+  $('live').disabled=true}
+$('live').onclick=async()=>{
+  const v=$('v'),btn=$('live');
+  if(streaming){streaming=false;stream.getTracks().forEach(t=>t.stop());v.style.display='none';btn.textContent='🎥 Start live camera';return}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}},audio:false})}
+  catch(e){log('Camera blocked: '+e.message);return}
+  v.srcObject=stream;await v.play();v.style.display='block';streaming=true;btn.textContent='⏹ Stop live camera';
+  const c=document.createElement('canvas'),cx=c.getContext('2d',{alpha:false});
+  let n=0,t0=performance.now(),fps=0,fail=0;
+  const nextFrame=()=>new Promise(r=>v.requestVideoFrameCallback?v.requestVideoFrameCallback(()=>r()):requestAnimationFrame(()=>r()));
+  while(streaming){
+    await nextFrame();                      // wait for a genuinely new camera frame
+    const w=v.videoWidth,h=v.videoHeight;if(!w)continue;
+    const s=Math.min(1,1600/Math.max(w,h));c.width=Math.round(w*s);c.height=Math.round(h*s);cx.drawImage(v,0,0,c.width,c.height);
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.7));
+    try{const r=await fetch('/api/phone/frame?t='+T,{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob,keepalive:false});
+      if(!r.ok)throw 0;fail=0;n++;const now=performance.now();if(now-t0>1000){fps=Math.round(n*1000/(now-t0));n=0;t0=now}
+      log('Live: '+fps+' fps, '+Math.round(blob.size/1024)+' KB/frame. Keep this screen on.')}
+    catch{log('Connection lost, retrying…');await new Promise(r=>setTimeout(r,Math.min(2000,300*++fail)))}}};
+</script></body></html>
